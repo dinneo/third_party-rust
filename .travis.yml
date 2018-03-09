@@ -36,7 +36,7 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7.3
-      if: branch = auto
+      if: branch = auto OR branch = debug-48866
 
     # macOS builders. These are placed near the beginning because they are very
     # slow to run.
@@ -248,19 +248,14 @@ before_script:
 script:
   - >
       date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
-  - stamp sh -x -c "$RUN_SCRIPT"
+  - >
+      ( ! stamp sh -x -c "$RUN_SCRIPT" )
   - >
       date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
 
 after_success:
   - >
       echo "#### Build successful; Disk usage after running script:";
-      df -h;
-      du . | sort -nr | head -n100
-
-after_failure:
-  - >
-      echo "#### Build failed; Disk usage after running script:";
       df -h;
       du . | sort -nr | head -n100
 
@@ -275,11 +270,13 @@ after_failure:
   - ls -lat $HOME/Library/Logs/DiagnosticReports/
   - find $HOME/Library/Logs/DiagnosticReports
       -type f
+      -name '*.crash'
       -not -name '*.stage2-*.crash'
       -not -name 'com.apple.CoreSimulator.CoreSimulatorService-*.crash'
       -exec printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" {} \;
       -exec head -750 {} \;
       -exec echo travis_fold":"end:crashlog \;
+      || true
 
   # attempt to debug anything killed by the oom killer on linux, just to see if
   # it happened
@@ -304,14 +301,16 @@ cache:
 
 before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
-  - >
-      if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-          rm -rf build/dist/doc &&
-          cp -r build/dist/* deploy/$TRAVIS_COMMIT;
-      else
-          rm -rf obj/build/dist/doc &&
-          cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
-      fi
+  - tar cfvJ deploy/$TRAVIS_COMMIT/stage1.xz build/x86_64-apple-darwin/stage1/ || true
+  - tar cfvJ deploy/$TRAVIS_COMMIT/stage2.xz build/x86_64-apple-darwin/stage2/ || true
+  # - >
+  #     if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+  #         rm -rf build/dist/doc &&
+  #         cp -r build/dist/* deploy/$TRAVIS_COMMIT;
+  #     else
+  #         rm -rf obj/build/dist/doc &&
+  #         cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
+  #     fi
   - travis_retry gem update --system
   - ls -la deploy/$TRAVIS_COMMIT
 
@@ -360,7 +359,7 @@ deploy:
     secret_access_key:
       secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
     on:
-      branch: try
+      branch: debug-48866
       condition: $DEPLOY = 1
 
   - provider: s3
@@ -374,5 +373,5 @@ deploy:
     secret_access_key:
       secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
     on:
-      branch: try
+      branch: debug-48866
       condition: $DEPLOY_ALT = 1

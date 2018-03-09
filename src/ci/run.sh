@@ -111,7 +111,8 @@ else
     return $retval
   }
 
-  do_make tidy
-  do_make all
-  do_make "$RUST_CHECK_TARGET"
+  # do_make tidy
+  # do_make all
+  # do_make "$RUST_CHECK_TARGET"
+  ./x.py build -j $ncpus src/tools/cargo
 fi
